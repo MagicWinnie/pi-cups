@@ -1,0 +1,4 @@
+*
+!Dockerfile
+!build-splix.sh
+!entrypoint.sh

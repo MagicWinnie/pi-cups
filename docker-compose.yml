@@ -1,37 +1,35 @@
-version: '2.4'
-
 services:
-  nginx:
-    image: nginx:alpine
-    ports:
-      - '8631:80'
-    volumes:
-      - './data/nginx/config/nginx.conf:/etc/nginx/nginx.conf'
-      - './data/nginx/logs:/var/log/nginx/'
-      - './data/nginx/html:/var/www/html/'
-      - ppd_files:/var/www/html/drivers
-
-    command: [nginx, '-g', 'daemon off;']
-    restart: unless-stopped
-
   app:
     build:
       context: ./build
-    privileged: true
+    privileged: ${CUPS_PRIVILEGED:-false}
+    environment:
+      CUPS_ADMIN_PASSWORD_FILE: /run/secrets/cups_admin_password
+    secrets:
+      - cups_admin_password
     volumes:
       - /etc/localtime:/etc/localtime:ro
       - /etc/timezone:/etc/timezone:ro
-      - /var/run/dbus:/var/run/dbus
+      - /var/run/dbus:/var/run/dbus:ro
       - './data/backups:/backups'
-      - ppd_files:/splix-patches/splix/ppd
       - cups_data:/etc/cups
-      - /dev:/dev
+      - /dev/bus/usb:/dev/bus/usb
+      - /dev/usb:/dev/usb
     device_cgroup_rules:
       - 'c 180:* rmw'
-      
+      - 'c 189:* rmw'
+    healthcheck:
+      test: [CMD, lpstat, -r]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
     network_mode: host
     restart: unless-stopped
 
 volumes:
-  ppd_files:
   cups_data:
+
+secrets:
+  cups_admin_password:
+    environment: CUPS_ADMIN_PASSWORD

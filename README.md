@@ -1,106 +1,106 @@
 # Pi-CUPS
 
-Docker based CUPS Printer server for Raspberry PI that supports the Samsung M2020 and others...
+A Raspberry Pi print server using Docker Compose, CUPS, and
+[OpenPrinting SpliX](https://github.com/OpenPrinting/splix). It supports the
+Samsung M2020; unnecessary vendor-driver bundles are not installed. Future
+IPP-compatible Wi-Fi printers can use CUPS driverless printing.
 
-## Introduction
+## Setup
 
-I have a pretty reliable Samsung M2020 laser printer which is not wireless, without CUPS and Splix support. The Linux drivers provided by Samsung do not support Arm processors so they were also of no use.
-
-After a lot of wasted time I finally managed to find some patches to Splix @ https://gitlab.com/ScumCoder/Splix/tree/patches/Splix that included the required drivers plus some.
-
-This docker container:-
-
-* Installs CUPS
-* printer-driver-all
-* printer-driver-cups-pdf
-* openprinting-ppds
-* Enables remote access
-* Builds the Splix patches
-* Installs the Splix patches
-* Persists the configuration
-* Serves the new driver files for download @ http://host:8631
-
-## Installation
+Requires Debian/Raspberry Pi OS, Docker Engine, Docker Compose v2, and a
+USB-connected printer.
 
 ```bash
-git clone https://github.com/neutralvibes/pi-cups.git && cd pi-cups && chmod +x *.sh
+git clone https://github.com/neutralvibes/pi-cups.git
+cd pi-cups
+chmod +x scripts/*.sh
+cp .env.example .env
+nano .env  # Set CUPS_ADMIN_PASSWORD
+
+sudo systemctl disable --now cups cups-browsed
+docker compose config --quiet
+docker compose up -d --build --remove-orphans
 ```
 
-If cups is already installed on your system you will need to stop and disable it otherwise the next step will fail. It doesn't hurt to do this if you are not sure.
+These commands assume your user can run `docker info` without `sudo`. If not,
+either prefix Docker commands with `sudo` or
+[configure Docker for non-root use](https://docs.docker.com/engine/install/linux-postinstall/#manage-docker-as-a-non-root-user).
+Membership in the `docker` group grants root-level privileges.
 
-~~~bash
-sudo systemctl stop cups-browsed
-sudo systemctl disable cups-browsed
-sudo systemctl stop cups
-sudo systemctl disable cups
-~~~
+- CUPS: `http://<pi-host>:631`
+- Admin user: `print`
+- Admin password: `CUPS_ADMIN_PASSWORD` from `.env`
 
+## Add the Samsung M2020
 
-## Usage
+In CUPS, select **Administration → Add Printer**, choose the USB-connected
+printer, and select **Samsung M2020 Series**.
 
-**On the very first run it will take a while as it builds the image.** CUPS has a ton of requirements so having a cup of tea and a slice of cake while it completes is recommended. On a Raspberry pi 3B it took circa 30 mins.
+On Windows, avoid WSD and add the printer manually with this URL:
 
-### Starting
+```text
+http://<pi-ip>:631/printers/Samsung_M2020_Series
+```
+
+## Update
 
 ```bash
-docker-compose up -d
+./scripts/backup.sh
+git pull
+docker compose build --no-cache app
+docker compose up -d --force-recreate --remove-orphans
+docker compose exec app cat /opt/splix/.splix-version
+docker compose exec app lpstat -t
 ```
 
-Or if your user hasn't been added to the docker group:
+After a SpliX update, modify an existing printer in CUPS and select or upload
+the new `m2020.ppd`. Re-enable a stopped queue with:
 
 ```bash
-sudo docker-compose up -d
+docker compose exec app cupsenable Samsung_M2020_Series
 ```
 
-You should now be able to connect to CUPS @ http://hostname:631
+SpliX uses single-threaded compression for stability. Single-sided printing is
+unaffected, but its assisted manual-duplex workflow is unavailable.
 
-### Admin credentials
-
-Cups admin user & password are both 'print'
-
-### Using drivers
-
-Remember, this is usually for those drivers not already available in CUPS, so see if it's not there already first.
-
-In-order to setup a printer using one of the patched drivers you have to surf to http://hostname:8631 and download the ppd driver file for your model of printer.
-
-In CUPS go to:-
-
-* Administration -> [Add Printer]
-* Select Samsung M2020 Series (or the printer required) -> [Continue]
-* Make any changes required -> [Continue]
-* [Choose File]
-* Select the driver file you previously downloaded.
-* Click [Add Printer]
-
-### Backups
-
-* Location -> `data/backups/config.tar`
-
-The CUPS data is stored on a docker volume for persistent storage. If the need arises, you can create or restore from a  tar backup. This creates a copy of the `/etc/cups` folder.
-
-#### Create
+## Backup and restore
 
 ```bash
-sudo ./backup.sh
+./scripts/backup.sh
+./scripts/restore.sh
 ```
 
-#### Restore
+The archive is stored at `data/backups/config.tar`.
 
-A confirmation prompt is shown when restoring.
+## Troubleshooting
+
+Check USB detection:
 
 ```bash
-sudo ./restore.sh
+lsusb
+ls -l /dev/usb /dev/bus/usb
+docker compose exec app lpinfo -v
 ```
 
-***
+Leave `CUPS_PRIVILEGED=false`. Recreate the app, confirm that `lpinfo -v` lists
+the Samsung `usb://` device, then print after the printer has slept and woken:
 
-## To do
+```bash
+docker compose up -d --force-recreate app
+docker compose config | grep 'privileged:'
+docker compose exec app lpinfo -v
+docker compose exec app lpstat -t
+```
 
-[ ] The container runs in privileged mode 😱, fix this.
+If `lsusb` sees the printer but the container does not, set
+`CUPS_PRIVILEGED=true`, recreate the app, and repeat the test. Privileged mode
+grants broad host access, so use it only as a diagnostic or fallback. Relevant
+logs are available with:
 
-***
+```bash
+docker compose logs --since 30m app
+docker compose exec app tail -n 200 /var/log/cups/error_log
+sudo journalctl -k -b --no-pager | tail -n 200
+```
 
-## Credits
-
-* Based on https://github.com/olbat/dockerfiles/tree/master/cupsd
+Based on [olbat/dockerfiles](https://github.com/olbat/dockerfiles/tree/master/cupsd) and [neutralvibes/pi-cups](https://github.com/neutralvibes/pi-cups).
