@@ -11,7 +11,7 @@ Requires Debian/Raspberry Pi OS, Docker Engine, Docker Compose v2, and a
 USB-connected printer.
 
 ```bash
-git clone https://github.com/neutralvibes/pi-cups.git
+git clone https://github.com/MagicWinnie/pi-cups.git
 cd pi-cups
 chmod +x scripts/*.sh
 cp .env.example .env
