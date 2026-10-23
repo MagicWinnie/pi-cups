@@ -1,7 +1,7 @@
 # Pi-CUPS
 
-A Raspberry Pi print server using Docker Compose, CUPS, and a pinned
-[SpliX patches-branch commit](https://gitlab.com/ScumCoder/splix/-/commit/f97086c367d926dc4b6f84facabc9c3029729cba). It supports the
+A Raspberry Pi print server using Docker Compose, CUPS, and
+[OpenPrinting SpliX](https://github.com/OpenPrinting/splix). It supports the
 Samsung M2020; unnecessary vendor-driver bundles are not installed. Future
 IPP-compatible Wi-Fi printers can use CUPS driverless printing.
 
@@ -62,9 +62,8 @@ queue and USB URI. Re-enable a stopped queue with:
 docker compose exec app cupsenable Samsung_M2020_Series
 ```
 
-The SpliX source is pinned rather than downloaded from a moving branch. This is
-the same driver lineage and build mode previously used successfully with the
-M2020.
+SpliX uses single-threaded compression for stability. Single-sided printing is
+unaffected, but its assisted manual-duplex workflow is unavailable.
 
 ## Backup and restore
 
