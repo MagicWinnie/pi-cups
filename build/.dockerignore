@@ -2,3 +2,4 @@
 !Dockerfile
 !build-splix.sh
 !entrypoint.sh
+!splix-300dpi-page-header.patch

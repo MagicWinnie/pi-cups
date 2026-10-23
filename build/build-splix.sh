@@ -19,6 +19,11 @@ sed -i \
   -e 's/pkg-config --libs cups/cups-config --libs/g' \
   "$source_dir/module.mk"
 
+# Backport OpenPrinting/splix@63956b6: SPL/QPDL page-header dimensions use a
+# 300-DPI grid, independently of the resolution used for raster bands.
+patch -d "$source_dir" -p1 \
+  < /usr/local/share/splix-300dpi-page-header.patch
+
 # The M2020 does not need JBIG. Disabling SpliX's legacy threaded page cache
 # avoids its crash-prone path; the tradeoff is that manual duplex is disabled.
 make -C "$source_dir" \

@@ -1,0 +1,42 @@
+From 63956b6c76292c011cf72f055b8415e303e318b4 Mon Sep 17 00:00:00 2001
+From: ValdikSS <iam@valdikss.org.ru>
+Date: Wed, 19 Aug 2026 02:28:21 +0300
+Subject: [PATCH] Always use printable width/height as in 300 DPI
+
+All Samsung, HP, Xerox printers' ULD driver uses 300 DPI values in header.
+Fixes https://github.com/Kuberwastaken/hp-laser-1008a-macos/issues/1
+---
+ src/qpdl.cpp | 11 ++---------
+ 1 file changed, 2 insertions(+), 9 deletions(-)
+
+diff --git a/src/qpdl.cpp b/src/qpdl.cpp
+index 035432f5..6a56d29e 100644
+--- a/src/qpdl.cpp
++++ b/src/qpdl.cpp
+@@ -373,8 +373,8 @@ bool renderPage(const Request& request, Page* page, bool lastPage)
+             break;
+     }
+ 
+-    width = page->width();
+-    height = page->height();
++    width = ceil(300 * (request.printer()->pageWidth() / 72.0));
++    height = ceil(300 * (request.printer()->pageHeight() / 72.0));
+ 
+     if (0x15 == page->compression()) {
+         selectedRenderBand = &_renderJBIGBand;
+@@ -382,13 +382,6 @@ bool renderPage(const Request& request, Page* page, bool lastPage)
+         selectedRenderBand = &_renderBand;
+     }
+ 
+-    if (request.printer()->fixedBandWidth() || 0x15 == page->compression()) {
+-        // For CLP-310/315 and fixed bandwidth printers, multiply page
+-        // dimensions in inches by 300.
+-        width = ceil(300 * (request.printer()->pageWidth() / 72.0));
+-        height = ceil(300 * (request.printer()->pageHeight() / 72.0));
+-    }
+-
+     // Send the page header
+     header[0x0] = 0;                                // Signature
+     header[0x1] = page->yResolution() / 100;        // Y Resolution
+-- 
+2.51.0

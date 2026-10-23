@@ -61,7 +61,9 @@ docker compose exec app cupsenable Samsung_M2020_Series
 ```
 
 SpliX uses single-threaded compression for stability. Single-sided printing is
-unaffected, but its assisted manual-duplex workflow is unavailable.
+unaffected, but its assisted manual-duplex workflow is unavailable. The build
+also backports [OpenPrinting's 300-DPI page-header fix](https://github.com/OpenPrinting/splix/commit/63956b6c76292c011cf72f055b8415e303e318b4);
+raster data still uses the resolution selected in CUPS.
 
 ## Backup and restore
 
@@ -82,20 +84,17 @@ ls -l /dev/usb /dev/bus/usb
 docker compose exec app lpinfo -v
 ```
 
-Leave `CUPS_PRIVILEGED=false`. Recreate the app, confirm that `lpinfo -v` lists
-the Samsung `usb://` device, then print after the printer has slept and woken:
+Recreate the app, confirm that `lpinfo -v` lists the Samsung `usb://` device,
+then print after the printer has slept and woken:
 
 ```bash
 docker compose up -d --force-recreate app
-docker compose config | grep 'privileged:'
 docker compose exec app lpinfo -v
 docker compose exec app lpstat -t
 ```
 
-If `lsusb` sees the printer but the container does not, set
-`CUPS_PRIVILEGED=true`, recreate the app, and repeat the test. Privileged mode
-grants broad host access, so use it only as a diagnostic or fallback. Relevant
-logs are available with:
+If `lsusb` sees the printer but the container does not, inspect the USB device
+permissions and the container logs. Relevant logs are available with:
 
 ```bash
 docker compose logs --since 30m app

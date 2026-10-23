@@ -2,7 +2,6 @@ services:
   app:
     build:
       context: ./build
-    privileged: ${CUPS_PRIVILEGED:-false}
     environment:
       CUPS_ADMIN_PASSWORD_FILE: /run/secrets/cups_admin_password
     secrets:
