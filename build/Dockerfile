@@ -1,27 +1,24 @@
 # syntax=docker/dockerfile:1
 
 ARG DEBIAN_RELEASE=bookworm-slim
-ARG SPLIX_VERSION=2.0.2
+ARG SPLIX_COMMIT=f97086c367d926dc4b6f84facabc9c3029729cba
 
 FROM debian:${DEBIAN_RELEASE} AS splix-builder
 
-ARG SPLIX_VERSION
+ARG SPLIX_COMMIT
 
 RUN apt-get update \
   && DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends \
     build-essential \
     ca-certificates \
-    cups-ppdc \
     libcups2-dev \
-    patch \
     unzip \
     wget \
   && rm -rf /var/lib/apt/lists/*
 
 COPY --chmod=755 build-splix.sh /usr/local/bin/build-splix
-COPY splix-300dpi-page-header.patch /usr/local/share/splix-300dpi-page-header.patch
 
-RUN SPLIX_VERSION="${SPLIX_VERSION}" /usr/local/bin/build-splix
+RUN SPLIX_COMMIT="${SPLIX_COMMIT}" /usr/local/bin/build-splix
 
 
 FROM debian:${DEBIAN_RELEASE}
