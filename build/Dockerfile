@@ -7,7 +7,6 @@ ARG SPLIX_DISABLE_THREADS=1
 FROM debian:${DEBIAN_RELEASE} AS splix-builder
 
 ARG SPLIX_VERSION
-ARG SPLIX_DISABLE_THREADS
 
 RUN apt-get update \
   && DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends \
@@ -22,6 +21,8 @@ RUN apt-get update \
 
 COPY --chmod=755 build-splix.sh /usr/local/bin/build-splix
 COPY splix-algo0x11-little-endian.patch /usr/local/share/
+
+ARG SPLIX_DISABLE_THREADS
 
 RUN SPLIX_VERSION="${SPLIX_VERSION}" \
   SPLIX_DISABLE_THREADS="${SPLIX_DISABLE_THREADS}" \
