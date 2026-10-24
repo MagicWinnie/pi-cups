@@ -2,10 +2,12 @@
 
 ARG DEBIAN_RELEASE=bookworm-slim
 ARG SPLIX_VERSION=2.0.2
+ARG SPLIX_DISABLE_THREADS=1
 
 FROM debian:${DEBIAN_RELEASE} AS splix-builder
 
 ARG SPLIX_VERSION
+ARG SPLIX_DISABLE_THREADS
 
 RUN apt-get update \
   && DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends \
@@ -21,7 +23,9 @@ RUN apt-get update \
 COPY --chmod=755 build-splix.sh /usr/local/bin/build-splix
 COPY splix-algo0x11-little-endian.patch /usr/local/share/
 
-RUN SPLIX_VERSION="${SPLIX_VERSION}" /usr/local/bin/build-splix
+RUN SPLIX_VERSION="${SPLIX_VERSION}" \
+  SPLIX_DISABLE_THREADS="${SPLIX_DISABLE_THREADS}" \
+  /usr/local/bin/build-splix
 
 
 FROM debian:${DEBIAN_RELEASE}

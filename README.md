@@ -47,7 +47,7 @@ http://<pi-ip>:631/printers/Samsung_M2020_Series
 ```bash
 ./scripts/backup.sh
 git pull
-docker compose build --no-cache app
+docker compose build app
 docker compose up -d --force-recreate --remove-orphans
 docker compose exec app lpadmin -p Samsung_M2020_Series \
   -P /usr/share/cups/model/splix/m2020.ppd
@@ -62,13 +62,24 @@ queue and USB URI. Re-enable a stopped queue with:
 docker compose exec app cupsenable Samsung_M2020_Series
 ```
 
-SpliX uses single-threaded compression for stability. Single-sided printing is
-unaffected, but its assisted manual-duplex workflow is unavailable.
+SpliX uses its synchronous renderer by default because its legacy threaded page
+cache has known races and crashes on some current CUPS systems. This changes
+more than manual duplex: it is an alternate rendering path. To test the
+threaded path without changing driver versions, build with:
+
+```bash
+docker compose build --build-arg SPLIX_DISABLE_THREADS=0 app
+docker compose up -d --force-recreate app
+docker compose exec app cat /opt/splix/.splix-version
+```
+
+The version marker must end in `+threaded`. Omit the build argument to return
+to the safer default, whose marker ends in `+single-thread`.
 
 The build also applies a narrow M2020 compatibility patch to compression
 algorithm `0x11`. It writes QPDL integers explicitly in little-endian order
 instead of using SpliX 2.0.2's host-dependent, unaligned integer accesses. The
-installed version marker is `2.0.2+m2020-le`; the driver remains based on
+installed marker starts with `2.0.2+m2020-le`; the driver remains based on
 OpenPrinting SpliX 2.0.2.
 
 ## Backup and restore

@@ -17,7 +17,7 @@
      // n2 and n1 has been exchanged since the first
      // element of the array MUST be the biggest
 -    return *(uint32_t *)n2 - *(uint32_t *)n1;
-+    return v2 > v1 ? 1 : (v2 < v1 ? -1 : 0);
++    return static_cast<int32_t>(v2 - v1);
  }
  
  bool Algo0x11::_lookupBestOccurs(const unsigned char* data, unsigned long size)

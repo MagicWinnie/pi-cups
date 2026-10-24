@@ -2,6 +2,15 @@
 set -eu
 
 : "${SPLIX_VERSION:?SPLIX_VERSION is required}"
+: "${SPLIX_DISABLE_THREADS:=1}"
+
+case "$SPLIX_DISABLE_THREADS" in
+  0|1) ;;
+  *)
+    echo "SPLIX_DISABLE_THREADS must be 0 or 1" >&2
+    exit 2
+    ;;
+esac
 
 source_dir="/opt/splix"
 output_dir="/out"
@@ -26,11 +35,12 @@ sed -i \
 patch -d "$source_dir" -p1 \
   < /usr/local/share/splix-algo0x11-little-endian.patch
 
-# The M2020 does not need JBIG. Disabling SpliX's legacy threaded page cache
-# avoids its crash-prone path; the tradeoff is that manual duplex is disabled.
+# The M2020 does not need JBIG. The threaded renderer can be enabled for
+# compatibility testing, but remains disabled by default because its legacy
+# page cache has known races and crashes on some current CUPS systems.
 make -C "$source_dir" \
   DISABLE_JBIG=1 \
-  DISABLE_THREADS=1 \
+  DISABLE_THREADS="$SPLIX_DISABLE_THREADS" \
   CUPSFILTER=/usr/lib/cups/filter \
   CUPSPPD=/usr/share/cups/model \
   CUPSPROFILE=/usr/share/cups/profiles
@@ -49,5 +59,11 @@ install -m 755 "$source_dir/optimized/rastertoqpdl" \
   "$output_dir/usr/lib/cups/filter/"
 install -m 644 "$generated_ppd/m2020.ppd" \
   "$output_dir/usr/share/cups/model/splix/"
-printf '%s+m2020-le\n' "$SPLIX_VERSION" \
+if [ "$SPLIX_DISABLE_THREADS" = 1 ]; then
+  render_mode="single-thread"
+else
+  render_mode="threaded"
+fi
+
+printf '%s+m2020-le+%s\n' "$SPLIX_VERSION" "$render_mode" \
   > "$output_dir/opt/splix/.splix-version"
