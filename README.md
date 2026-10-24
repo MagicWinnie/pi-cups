@@ -1,9 +1,7 @@
 # Pi-CUPS
 
-A Raspberry Pi print server using Docker Compose, CUPS, and
-[OpenPrinting SpliX](https://github.com/OpenPrinting/splix). It supports the
-Samsung M2020; unnecessary vendor-driver bundles are not installed. Future
-IPP-compatible Wi-Fi printers can use CUPS driverless printing.
+A Raspberry Pi print server for the USB-connected Samsung M2020, using Docker
+Compose, CUPS, and [OpenPrinting SpliX](https://github.com/OpenPrinting/splix).
 
 ## Setup
 
@@ -62,25 +60,9 @@ queue and USB URI. Re-enable a stopped queue with:
 docker compose exec app cupsenable Samsung_M2020_Series
 ```
 
-SpliX uses its synchronous renderer by default because its legacy threaded page
-cache has known races and crashes on some current CUPS systems. This changes
-more than manual duplex: it is an alternate rendering path. To test the
-threaded path without changing driver versions, build with:
-
-```bash
-docker compose build --build-arg SPLIX_DISABLE_THREADS=0 app
-docker compose up -d --force-recreate app
-docker compose exec app cat /opt/splix/.splix-version
-```
-
-The version marker must end in `+threaded`. Omit the build argument to return
-to the safer default, whose marker ends in `+single-thread`.
-
-The build also applies a narrow M2020 compatibility patch to compression
-algorithm `0x11`. It writes QPDL integers explicitly in little-endian order
-instead of using SpliX 2.0.2's host-dependent, unaligned integer accesses. The
-installed marker starts with `2.0.2+m2020-le`; the driver remains based on
-OpenPrinting SpliX 2.0.2.
+The fixed driver build uses SpliX 2.0.2 with one compression worker and an
+M2020 compatibility fix for little-endian QPDL compression. Its version marker
+is `2.0.2+m2020-le+threaded-1w`.
 
 ## Backup and restore
 
@@ -97,7 +79,7 @@ Check USB detection:
 
 ```bash
 lsusb
-ls -l /dev/usb /dev/bus/usb
+ls -l /dev/bus/usb
 docker compose exec app lpinfo -v
 ```
 

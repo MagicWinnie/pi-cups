@@ -13,9 +13,7 @@ services:
       - './data/backups:/backups'
       - cups_data:/etc/cups
       - /dev/bus/usb:/dev/bus/usb
-      - /dev/usb:/dev/usb
     device_cgroup_rules:
-      - 'c 180:* rmw'
       - 'c 189:* rmw'
     healthcheck:
       test: [CMD, lpstat, -r]

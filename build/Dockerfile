@@ -1,17 +1,26 @@
 # syntax=docker/dockerfile:1
 
-ARG DEBIAN_RELEASE=bookworm-slim
-ARG SPLIX_VERSION=2.0.2
-ARG SPLIX_DISABLE_THREADS=1
+FROM debian:bookworm-slim AS runtime-base
 
-FROM debian:${DEBIAN_RELEASE} AS splix-builder
+RUN apt-get update \
+  && DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends \
+    ca-certificates \
+    cups \
+    cups-filters \
+  && rm -rf /var/lib/apt/lists/* \
+  && useradd \
+    --groups=lp,lpadmin \
+    --create-home \
+    --home-dir=/home/print \
+    --shell=/bin/bash \
+    print
 
-ARG SPLIX_VERSION
+
+FROM runtime-base AS splix-builder
 
 RUN apt-get update \
   && DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends \
     build-essential \
-    ca-certificates \
     cups-ppdc \
     libcups2-dev \
     patch \
@@ -22,33 +31,10 @@ RUN apt-get update \
 COPY --chmod=755 build-splix.sh /usr/local/bin/build-splix
 COPY splix-algo0x11-little-endian.patch /usr/local/share/
 
-ARG SPLIX_DISABLE_THREADS
-
-RUN SPLIX_VERSION="${SPLIX_VERSION}" \
-  SPLIX_DISABLE_THREADS="${SPLIX_DISABLE_THREADS}" \
-  /usr/local/bin/build-splix
+RUN /usr/local/bin/build-splix
 
 
-FROM debian:${DEBIAN_RELEASE}
-
-# Copying from the builder first makes BuildKit finish that stage before it
-# starts the runtime package installation. This avoids running both apt-get
-# processes concurrently on memory-constrained Raspberry Pis.
-COPY --from=splix-builder /out/ /
-
-RUN apt-get update \
-  && DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends \
-    ca-certificates \
-    cups \
-    cups-filters \
-    usbutils \
-  && rm -rf /var/lib/apt/lists/* \
-  && useradd \
-    --groups=lp,lpadmin \
-    --create-home \
-    --home-dir=/home/print \
-    --shell=/bin/bash \
-    print
+FROM runtime-base
 
 # Generate the initial configuration copied into the cups_data volume.
 RUN /usr/sbin/cupsd \
@@ -58,6 +44,7 @@ RUN /usr/sbin/cupsd \
   && sed -i '0,/^</s//DefaultEncryption IfRequested\n&/' /etc/cups/cupsd.conf \
   && echo 'ServerAlias *' >> /etc/cups/cupsd.conf
 
+COPY --from=splix-builder /out/ /
 COPY --chmod=755 entrypoint.sh /entrypoint.sh
 
 EXPOSE 631

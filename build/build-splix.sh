@@ -1,25 +1,15 @@
 #!/bin/sh
 set -eu
 
-: "${SPLIX_VERSION:?SPLIX_VERSION is required}"
-: "${SPLIX_DISABLE_THREADS:=1}"
-
-case "$SPLIX_DISABLE_THREADS" in
-  0|1) ;;
-  *)
-    echo "SPLIX_DISABLE_THREADS must be 0 or 1" >&2
-    exit 2
-    ;;
-esac
-
+version="2.0.2"
 source_dir="/opt/splix"
 output_dir="/out"
 archive="/tmp/splix.zip"
 
 wget -q -O "$archive" \
-  "https://github.com/OpenPrinting/splix/archive/refs/tags/${SPLIX_VERSION}.zip"
+  "https://github.com/OpenPrinting/splix/archive/refs/tags/${version}.zip"
 unzip -q "$archive" -d /opt
-mv "/opt/splix-${SPLIX_VERSION}" "$source_dir"
+mv "/opt/splix-${version}" "$source_dir"
 rm "$archive"
 
 # Debian 12 provides cups-config but does not include a cups.pc file.
@@ -35,12 +25,12 @@ sed -i \
 patch -d "$source_dir" -p1 \
   < /usr/local/share/splix-algo0x11-little-endian.patch
 
-# The M2020 does not need JBIG. The threaded renderer can be enabled for
-# compatibility testing, but remains disabled by default because its legacy
-# page cache has known races and crashes on some current CUPS systems.
+# The M2020 does not need JBIG. Its synchronous renderer produces a stream that
+# this printer rejects, so use the threaded renderer with one compression
+# worker to reduce concurrency in SpliX's legacy page cache.
 make -C "$source_dir" \
   DISABLE_JBIG=1 \
-  DISABLE_THREADS="$SPLIX_DISABLE_THREADS" \
+  THREADS=1 \
   CUPSFILTER=/usr/lib/cups/filter \
   CUPSPPD=/usr/share/cups/model \
   CUPSPROFILE=/usr/share/cups/profiles
@@ -59,11 +49,5 @@ install -m 755 "$source_dir/optimized/rastertoqpdl" \
   "$output_dir/usr/lib/cups/filter/"
 install -m 644 "$generated_ppd/m2020.ppd" \
   "$output_dir/usr/share/cups/model/splix/"
-if [ "$SPLIX_DISABLE_THREADS" = 1 ]; then
-  render_mode="single-thread"
-else
-  render_mode="threaded"
-fi
-
-printf '%s+m2020-le+%s\n' "$SPLIX_VERSION" "$render_mode" \
+printf '%s+m2020-le+threaded-1w\n' "$version" \
   > "$output_dir/opt/splix/.splix-version"
