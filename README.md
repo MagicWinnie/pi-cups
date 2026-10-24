@@ -65,6 +65,12 @@ docker compose exec app cupsenable Samsung_M2020_Series
 SpliX uses single-threaded compression for stability. Single-sided printing is
 unaffected, but its assisted manual-duplex workflow is unavailable.
 
+The build also applies a narrow M2020 compatibility patch to compression
+algorithm `0x11`. It writes QPDL integers explicitly in little-endian order
+instead of using SpliX 2.0.2's host-dependent, unaligned integer accesses. The
+installed version marker is `2.0.2+m2020-le`; the driver remains based on
+OpenPrinting SpliX 2.0.2.
+
 ## Backup and restore
 
 ```bash

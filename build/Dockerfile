@@ -13,11 +13,13 @@ RUN apt-get update \
     ca-certificates \
     cups-ppdc \
     libcups2-dev \
+    patch \
     unzip \
     wget \
   && rm -rf /var/lib/apt/lists/*
 
 COPY --chmod=755 build-splix.sh /usr/local/bin/build-splix
+COPY splix-algo0x11-little-endian.patch /usr/local/share/
 
 RUN SPLIX_VERSION="${SPLIX_VERSION}" /usr/local/bin/build-splix
 

@@ -19,6 +19,13 @@ sed -i \
   -e 's/pkg-config --libs cups/cups-config --libs/g' \
   "$source_dir/module.mk"
 
+# QPDL compression 0x11 is a little-endian wire format. Upstream 2.0.2 uses
+# native unaligned integer accesses and marks the result host-dependent, which
+# selects a broken generic sub-header path. Encode the stream explicitly and
+# select the existing little-endian writer instead.
+patch -d "$source_dir" -p1 \
+  < /usr/local/share/splix-algo0x11-little-endian.patch
+
 # The M2020 does not need JBIG. Disabling SpliX's legacy threaded page cache
 # avoids its crash-prone path; the tradeoff is that manual duplex is disabled.
 make -C "$source_dir" \
@@ -42,4 +49,5 @@ install -m 755 "$source_dir/optimized/rastertoqpdl" \
   "$output_dir/usr/lib/cups/filter/"
 install -m 644 "$generated_ppd/m2020.ppd" \
   "$output_dir/usr/share/cups/model/splix/"
-printf '%s\n' "$SPLIX_VERSION" > "$output_dir/opt/splix/.splix-version"
+printf '%s+m2020-le\n' "$SPLIX_VERSION" \
+  > "$output_dir/opt/splix/.splix-version"

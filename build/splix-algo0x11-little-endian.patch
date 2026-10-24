@@ -1,0 +1,54 @@
+--- a/src/algo0x11.cpp
++++ b/src/algo0x11.cpp
+@@ -32,8 +32,19 @@
+ int Algo0x11::__compare(const void *n1, const void *n2)
+ {
++    // QPDL 0x11 values are little-endian, independently of the host CPU.
++    const unsigned char *p1 = static_cast<const unsigned char *>(n1);
++    const unsigned char *p2 = static_cast<const unsigned char *>(n2);
++    const uint32_t v1 = static_cast<uint32_t>(p1[0])
++        | (static_cast<uint32_t>(p1[1]) << 8)
++        | (static_cast<uint32_t>(p1[2]) << 16)
++        | (static_cast<uint32_t>(p1[3]) << 24);
++    const uint32_t v2 = static_cast<uint32_t>(p2[0])
++        | (static_cast<uint32_t>(p2[1]) << 8)
++        | (static_cast<uint32_t>(p2[2]) << 16)
++        | (static_cast<uint32_t>(p2[3]) << 24);
+     // n2 and n1 has been exchanged since the first
+     // element of the array MUST be the biggest
+-    return *(uint32_t *)n2 - *(uint32_t *)n1;
++    return v2 > v1 ? 1 : (v2 < v1 ? -1 : 0);
+ }
+ 
+ bool Algo0x11::_lookupBestOccurs(const unsigned char* data, unsigned long size)
+@@ -89,7 +100,8 @@
+ 
+     // Print the table
+     for (unsigned long i=0; i < TABLE_PTR_SIZE; i++, w += 2) {
+-        *(uint16_t *)(out + w) = (uint16_t)_ptrArray[i];
++        out[w] = _ptrArray[i];
++        out[w+1] = _ptrArray[i] >> 8;
+         if (_ptrArray[i] > uncompSize)
+             uncompSize = _ptrArray[i];
+     }
+@@ -97,7 +109,10 @@
+     // Print the first uncompressed bytes
+     if (uncompSize > MAX_UNCOMPRESSED_BYTES)
+         uncompSize = MAX_UNCOMPRESSED_BYTES;
+-    *(uint32_t *)out = (uint32_t)uncompSize;
++    out[0] = uncompSize;
++    out[1] = uncompSize >> 8;
++    out[2] = uncompSize >> 16;
++    out[3] = uncompSize >> 24;
+     for (r=0; r < uncompSize; r++, w++)
+         out[w] = data[r];
+ 
+@@ -234,7 +249,7 @@
+     // Register the result into a band plane
+     plane = new BandPlane();
+     plane->setData(output, outputSize);
+-    plane->setEndian(BandPlane::Dependant);
++    plane->setEndian(BandPlane::LittleEndian);
+     plane->setCompression(0x11);
+ 
+     return plane;
