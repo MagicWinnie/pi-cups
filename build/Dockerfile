@@ -31,6 +31,11 @@ RUN SPLIX_VERSION="${SPLIX_VERSION}" \
 
 FROM debian:${DEBIAN_RELEASE}
 
+# Copying from the builder first makes BuildKit finish that stage before it
+# starts the runtime package installation. This avoids running both apt-get
+# processes concurrently on memory-constrained Raspberry Pis.
+COPY --from=splix-builder /out/ /
+
 RUN apt-get update \
   && DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends \
     ca-certificates \
@@ -44,8 +49,6 @@ RUN apt-get update \
     --home-dir=/home/print \
     --shell=/bin/bash \
     print
-
-COPY --from=splix-builder /out/ /
 
 # Generate the initial configuration copied into the cups_data volume.
 RUN /usr/sbin/cupsd \
